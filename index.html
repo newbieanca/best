@@ -144,7 +144,17 @@
                     <i class="fa-solid fa-quote-left absolute top-2 left-3 text-white/10 text-2xl"></i>
                     <p id="detail-modal-desc" class="text-xs italic text-gray-200 relative z-10 pl-6 leading-relaxed">--</p>
                 </div>
-                <button onclick="closeDetailModal()" class="w-full py-2.5 bg-gradient-to-r from-sharpRed to-red-700 hover:from-red-600 hover:to-red-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all">Tutup Detail</button>
+                <div class="flex gap-2 w-full">
+                    <button onclick="closeDetailModal()" class="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all">
+                        <i class="fa-solid fa-xmark mr-1"></i> Tutup
+                    </button>
+                    <button onclick="editEmployeeFromDetail()" class="flex-1 py-2.5 bg-sharpGold/20 hover:bg-sharpGold/30 border border-sharpGold/40 text-sharpGold font-bold text-xs uppercase tracking-wider rounded-xl transition-all">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
+                    </button>
+                    <button onclick="deleteEmployeeFromDetail()" class="flex-1 py-2.5 bg-red-900/30 hover:bg-red-900/50 border border-red-700/40 text-red-400 font-bold text-xs uppercase tracking-wider rounded-xl transition-all">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Hapus
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -960,6 +970,7 @@ service cloud.firestore {
             if (index === undefined || index === null || index < 0) return;
             const emp = employees[index];
             if (!emp) return;
+            activeDetailIndex = index;
             document.getElementById('detail-modal-name').innerText = emp.name;
             document.getElementById('detail-modal-position').innerText = emp.position;
             document.getElementById('detail-modal-period').innerText = formatPeriod(emp.period);
@@ -980,6 +991,57 @@ service cloud.firestore {
         }
 
         function closeDetailModal() { document.getElementById('detail-modal').classList.add('hidden'); }
+
+        let activeDetailIndex = -1;
+
+        function editEmployeeFromDetail() {
+            if (activeDetailIndex < 0) return;
+            const emp = employees[activeDetailIndex];
+            if (!emp) return;
+
+            closeDetailModal();
+            openAdminModal();
+
+            document.getElementById('form-period').value = emp.period || '';
+            document.getElementById('form-name').value = emp.name || '';
+            document.getElementById('form-position').value = emp.position || '';
+            document.getElementById('form-badge-id').value = emp.badgeId || '';
+            document.getElementById('form-desc').value = emp.desc || '';
+
+            if (emp.photo) {
+                document.getElementById('form-photo-base64').value = emp.photo;
+                document.getElementById('photo-preview-img').src = emp.photo;
+                document.getElementById('photo-preview-container').classList.remove('hidden');
+                document.getElementById('photo-preview-container').classList.add('flex');
+                document.getElementById('photo-preview-source').innerText = 'Sumber: Data Tersimpan';
+            }
+        }
+
+        function deleteEmployeeFromDetail() {
+            if (activeDetailIndex < 0) return;
+            const emp = employees[activeDetailIndex];
+            if (!emp) return;
+
+            showCustomAlert(
+                'Hapus Karyawan?',
+                `Apakah Anda yakin ingin menghapus data "${emp.name}" periode ${formatPeriod(emp.period)}? Tindakan ini tidak dapat dibatalkan.`,
+                true,
+                async (confirmed) => {
+                    if (!confirmed) return;
+                    employees.splice(activeDetailIndex, 1);
+                    localStorage.setItem('sharp_employees', JSON.stringify(employees));
+                    renderBoard();
+                    closeDetailModal();
+                    showToast('Berhasil Dihapus', `Data ${emp.name} telah dihapus.`, 'success');
+                    if (db) {
+                        try {
+                            const key = `emp_${emp.period}_${emp.name.replace(/\s+/g, '_')}`;
+                            await db.collection(FB_COLLECTION).doc(key).delete();
+                        } catch(e) { console.error('Firebase delete error:', e); }
+                    }
+                }
+            );
+        }
 
         // =============================================
         // RENDER BOARD
