@@ -570,7 +570,10 @@ service cloud.firestore {
             </div>
             <div class="flex items-center gap-3">
                 <button onclick="resetDataConfirmation()" class="bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 text-[10px] font-bold px-4 py-2 rounded-lg border border-white/10 transition-all">
-                    <i class="fa-solid fa-trash-can"></i> Reset Demo Data
+                    <i class="fa-solid fa-rotate-left"></i> Reset ke Demo
+                </button>
+                <button onclick="deleteAllDataConfirmation()" class="bg-red-900/30 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-[10px] font-bold px-4 py-2 rounded-lg border border-red-800/50 hover:border-red-600 transition-all">
+                    <i class="fa-solid fa-trash-can"></i> Hapus Data Demo
                 </button>
                 <button onclick="openAdminModal()" class="bg-sharpRed hover:bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-red-600/20">
                     <i class="fa-solid fa-user-plus"></i> Input Karyawan Terbaik
@@ -1406,6 +1409,31 @@ service cloud.firestore {
                     if (db) await deleteAllFirebaseAndPush();
                 }
             });
+        }
+
+        function deleteAllDataConfirmation() {
+            // Identify which employees are demo data
+            const demoNames = INITIAL_EMPLOYEES.map(e => e.name + '|' + e.period);
+            const demoCount = employees.filter(e => demoNames.includes(e.name + '|' + e.period)).length;
+
+            if (demoCount === 0) {
+                showCustomAlert('Tidak Ada Data Demo', 'Tidak ditemukan data demo pada board saat ini.');
+                return;
+            }
+
+            showCustomAlert(
+                'Hapus Data Demo?',
+                `Ditemukan ${demoCount} data demo bawaan. Data ini akan dihapus dari tampilan lokal. Data yang Anda input sendiri tetap aman. Firebase tidak akan terpengaruh.`,
+                true,
+                (confirmed) => {
+                    if (!confirmed) return;
+                    // Remove only demo entries, keep user-inputted data
+                    employees = employees.filter(e => !demoNames.includes(e.name + '|' + e.period));
+                    localStorage.setItem('sharp_employees', JSON.stringify(employees));
+                    renderBoard();
+                    showToast('Data Demo Dihapus', `${demoCount} data demo berhasil dihapus. Data Anda tetap aman.`, 'success');
+                }
+            );
         }
 
         // =============================================
